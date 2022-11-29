@@ -4,15 +4,21 @@ import os
 from os.path import exists
 from sys import argv, platform
 
-profile = os.environ.get('USERNAME')
-if "--singlecache" not in argv or not exists(f"/home/{profile}/.theanorc"):
+
+if platform != 'darwin': 
+    homename = "home"
+    profile = os.environ.get('USERNAME')
+else: 
+    homename = "Users"
+    profile = os.getlogin()
+if "--singlecache" not in argv or not exists(f"/{homename}/{profile}/.theanorc"):
     i = 2
     theano_dir = "/home/{}/.theano/c1/".format(profile)
-    while exists(theano_dir): theano_dir, i = "/home/{}/.theano/c{:d}/".format(profile,i), i+1
+    while exists(theano_dir): theano_dir, i = "/{}/{}/.theano/c{:d}/".format(homename,profile,i), i+1
 
-    line = "[global]\ndevice = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas".format(theano_dir)
-
-    with open("/home/{}/.theanorc".format(profile),'w') as of: of.write(line)
+    if platform != "darwin": line = "[global]\ndevice = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas".format(theano_dir)
+    else: line = "[global]\ndevice = cpu\nbase_compiledir={}".format(theano_dir)
+    with open("/{}/{}/.theanorc".format(homename,profile),'w') as of: of.write(line)
     del line
 
 del profile 
