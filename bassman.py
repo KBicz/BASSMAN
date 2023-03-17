@@ -1,22 +1,23 @@
 #! /usr/bin/python3
 
 import os
+import starry
 from os.path import exists
 from sys import argv, platform
 
+profile = os.getlogin()
 
-if platform != 'darwin': 
-    homename = "home"
-    profile = os.environ.get('USERNAME')
-else: 
-    homename = "Users"
-    profile = os.getlogin()
-if "--singlecache" not in argv or not exists(f"/{homename}/{profile}/.theanorc"):
+if platform != 'darwin': homename = "home"
+else: homename = "Users"
+
+if ("--singlecache" not in argv and "-h" not in argv and '--help' not in argv) or not exists(f"/{homename}/{profile}/.theanorc"):
     i = 2
     theano_dir = "/home/{}/.theano/c1/".format(profile)
     while exists(theano_dir): theano_dir, i = "/{}/{}/.theano/c{:d}/".format(homename,profile,i), i+1
 
-    if platform != "darwin": line = "[global]\ndevice = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas".format(theano_dir)
+    if platform != "darwin": 
+        if starry.__version__ == "1.0.0" : line = "[global]\ndevice = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas".format(theano_dir)
+        else: line = "[global]\ndevice = cpu\nbase_compiledir={}".format(theano_dir)
     else: line = "[global]\ndevice = cpu\nbase_compiledir={}".format(theano_dir)
     with open("/{}/{}/.theanorc".format(homename,profile),'w') as of: of.write(line)
     del line
@@ -25,11 +26,11 @@ del profile
 
 import gc
 import sys
-import starry
 import random
 import numpy as np
 import pymc3 as pm
-import exoplanet as xo
+if starry.__version__ == "1.0.0": import exoplanet as pmx
+else: import pymc3_ext as pmx
 import matplotlib.pyplot as plt
 
 from os import system
@@ -198,7 +199,7 @@ def print_results(map_soln,nspots,omega_eq,tns):
         data[i,7] = "{:.4f}".format(tns['rad{:d}'.format(i)])
         try: data[i,8] = "{:.2e}".format(tns['flux{:d}'.format(i)])
         except: data[i,8] = "NaN"
-    print(DataFrame(data,tabtab,["Amplitude","Size","Latitude","Longitude","Alpha={:.4f}".format(map_soln['alpha']),"Temperature","Size","Radius","Flux"]))
+    print(DataFrame(data,tabtab,["Amplitude","Sigma","Latitude","Longitude","Alpha={:.4f}".format(map_soln['alpha']),"Temperature","Size","Radius","Flux"]))
 
 def init():
     starry.config.lazy = True
@@ -300,7 +301,6 @@ def tempandsiz(map_soln,B,ampl,nspots):
         if sto1 >= 300 : sto1 = 299
         if sta2 < 0 : sta2 = 0
         if sto2 >= 300 : sto2 = 299
-        #shap = np.shape(mapa[sta1:sto1,sta2:sto2][np.where(mapa[sta1:sto1,sta2:sto2] < round(np.median(mapa),2))])[0]
         if map_soln['amp{:d}'.format(i)] <= 0:
             msig = np.mean(mapa[sta1:sto1,sta2:sto2][(np.where((mapa[sta1:sto1,sta2:sto2] < np.median(mapa)) & (mapa[sta1:sto1,sta2:sto2] >= 0)))])
             terr = np.std(mapa[sta1:sto1,sta2:sto2][(np.where((mapa[sta1:sto1,sta2:sto2] < np.median(mapa)) & (mapa[sta1:sto1,sta2:sto2] >= 0)))])
@@ -375,7 +375,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         ylp, xlp = 4, 4
 
     if liveplot: plt.ion()
-    knums = [0,1,2,4,5,6,7,9,8]
+    cnums = [0,1,2,4,5,6,7,9,8]
     data = np.load(params, allow_pickle=True)
     B = data["B"].item()
     t = data["t"]
@@ -527,17 +527,17 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             pm.Deterministic("flux_model", flux_model)
             # Save our initial guess
             gc.collect()
-            flux_model_guess = xo.eval_in_model(flux_model).copy()
+            flux_model_guess = pmx.eval_in_model(flux_model).copy()
             gc.collect()
             pm.Normal("obs", mu=flux_model, sd=sigma, observed=flux)
             gc.collect()
-            map_soln = xo.optimize(vars=[*sspots.values(),*scalealpha],options={"maxiter": 10000},start=model.test_point)
+            map_soln = pmx.optimize(vars=[*sspots.values(),*scalealpha],options={"maxiter": 10000},start=model.test_point)
             gc.collect()
             if str(map_soln['flux_model'][0]) != "nan":
                 for i in range(1,nspots+1):
-                    map_soln = xo.optimize(vars=[sspots['amp{:d}'.format(i)],sspots['sigma{:d}'.format(i)],sspots['lat{:d}'.format(i)],sspots['lon{:d}'.format(i)],*scalealpha],start=map_soln,options={"maxiter": 10000})
+                    map_soln = pmx.optimize(vars=[sspots['amp{:d}'.format(i)],sspots['sigma{:d}'.format(i)],sspots['lat{:d}'.format(i)],sspots['lon{:d}'.format(i)],*scalealpha],start=map_soln,options={"maxiter": 10000})
                     gc.collect()
-                map_soln, info = xo.optimize(start=map_soln, return_info=True,options={"maxiter": 10000})
+                map_soln, info = pmx.optimize(start=map_soln, return_info=True,options={"maxiter": 10000})
                 gc.collect()
                 logp = -info.fun
             else:
@@ -550,7 +550,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             nc = nspots*4+1
         if not diffctrl: map_soln['alpha'] = alpha
         else: nc += 1
-        fmchi = xo.eval_in_model(flux_model, map_soln, model=model)
+        fmchi = pmx.eval_in_model(flux_model, map_soln, model=model)
         m, bbb = abs(np.polyfit(t, flux/fmchi, 1))
         mf, chisqsel, chisqselnc = max(fmchi), np.sum((flux-fmchi)**2/(sigma)**2)/len(fmchi), np.sum((flux-fmchi)**2/(sigma)**2)/(len(fmchi)-nc)
         print("chi^2/(N-{:d}) = {}".format(nc,chisqselnc))
@@ -595,7 +595,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
                 teststar = [None for _ in range(nspots)]
                 testomega = [None for _ in range(nspots)]
                 spots_bools = [True for _ in range(nspots)]
-                flux_model_comp = xo.eval_in_model(flux_model, map_soln, model=model)
+                flux_model_comp = pmx.eval_in_model(flux_model, map_soln, model=model)
                 for n in range(1,nspots+1):
                     teststar[n-1] = starry.Map(ydeg=B["ydeg"][0], udeg=B["udeg"][0], inc=B['inc'], amp=ampl)
                     teststar[n-1].add_spot(amp=map_soln['amp{:d}'.format(n)]*map_soln['scale'],sigma=map_soln['sigma{:d}'.format(n)],lat=map_soln['lat{:d}'.format(n)],lon=map_soln['lon{:d}'.format(n)])
@@ -603,7 +603,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
                     teststar[n-1][2] = B["u"][1]
         
                     testomega[n-1] = omega_eq*(1-map_soln['alpha']*np.sin(sspots['lat{:d}'.format(n)]*np.pi/180)**2)
-                    flux_model_test = xo.eval_in_model(teststar[n-1].flux(theta=testomega[n-1] * t), map_soln, model=model)
+                    flux_model_test = pmx.eval_in_model(teststar[n-1].flux(theta=testomega[n-1] * t), map_soln, model=model)
                     flux_model_test += ampl-np.max(flux_model_test)
                     if pcom:
                         plt.figure(figsize=(9, 7))
@@ -639,8 +639,8 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     print()
     gc.collect()
 
-    if not diffctrl: whfl = np.where((data['timeorig']-data['mintim']) <= data['timeorig'][0]-data['mintim']+B['prot'])[0]
-    else: whfl = np.where((data['timeorig']-data['mintim']) <= data['timeorig'][0]-data['mintim']+3*B['prot'])[0]
+    if not diffctrl: whfl = np.where( ((data['timeorig']-data['mintim'] >= t[0]) & (data['timeorig']-data['mintim'] <= t[0]+B['prot'])) )[0]
+    else: whfl = np.where( ((data['timeorig']-data['mintim'] >= t[0]) & (data['timeorig']-data['mintim'] <= t[0]+3*B['prot'])) )[0]
 
     fluxsum = 0
     for i in range(1,nspots+1):
@@ -663,8 +663,8 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         image = np.zeros((len(t_ani),res,res))
         imagefil = np.zeros((len(t_ani),res,res))
         for n in range(nspots):
-            tmp = xo.eval_in_model(sec[n].render(projection="rect",res=res),point=map_soln)
-            shift = np.array(xo.eval_in_model(omega[n],point=map_soln)*t_ani*res/360,dtype=int)
+            tmp = pmx.eval_in_model(sec[n].render(projection="rect",res=res),point=map_soln)
+            shift = np.array(pmx.eval_in_model(omega[n],point=map_soln)*t_ani*res/360,dtype=int)
             for n in range(len(t_ani)):
                 image[n] += np.roll(tmp,shift[n],axis=1)
 
@@ -672,13 +672,13 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         imageshow = np.zeros([res,res])
         if not tbjdctrl: #imageshow = secimshow.render(theta=(t[0]/B['prot']-t[0]//B['prot'])*360,projection="rect").eval()
             for n in range(nspots):
-                tmp = xo.eval_in_model(sec[n].render(projection="rect",res=res),point=map_soln)
-                shift = np.array(xo.eval_in_model(omega[n],point=map_soln)*(t[0]-t[0])*res/360,dtype=int)
+                tmp = pmx.eval_in_model(sec[n].render(projection="rect",res=res),point=map_soln)
+                shift = np.array(pmx.eval_in_model(omega[n],point=map_soln)*(t[0]-t[0])*res/360,dtype=int)
                 imageshow += np.roll(tmp,shift,axis=1)
         else: #imageshow = secimshow.render(theta=(tbjd/B['prot']-tbjd//B['prot'])*360,projection="rect").eval()
             for n in range(nspots):
-                tmp = xo.eval_in_model(sec[n].render(projection="rect",res=res),point=map_soln)
-                shift = np.array(xo.eval_in_model(omega[n],point=map_soln)*tbjd*res/360,dtype=int)
+                tmp = pmx.eval_in_model(sec[n].render(projection="rect",res=res),point=map_soln)
+                shift = np.array(pmx.eval_in_model(omega[n],point=map_soln)*tbjd*res/360,dtype=int)
                 imageshow += np.roll(tmp,shift,axis=1)
 
         if filterctrl: imageshow = zebra_filter(imageshow)
@@ -734,11 +734,11 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
 
     if isgap(t,gv) or (isgap(data['ort'],gv) and fulltime): flux_model2 = map_soln['scale']*pm.math.sum(flux_model2,axis=0)
     flux_model3 = map_soln['scale']*pm.math.sum(flux_model3,axis=0)
-    flux_model_orig = xo.eval_in_model(flux_model3, map_soln, model=model)
+    flux_model_orig = pmx.eval_in_model(flux_model3, map_soln, model=model)
     del flux_model3
     if fulltime:
         flux_model4 = map_soln['scale']*pm.math.sum(flux_model4,axis=0)
-        flux_model4 = xo.eval_in_model(flux_model4, map_soln, model=model)
+        flux_model4 = pmx.eval_in_model(flux_model4, map_soln, model=model)
     chisq = np.sum(((data['fluxorig']/1000+1)-flux_model_orig)**2/(data['errorig']/1000)**2)
     if fulltime: chisqfull = np.sum((data['orf']-flux_model4)**2/(data['ore'])**2)
 
@@ -772,7 +772,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     else: tc = ttt
     with model:
         for i in range(1,nspots+1):
-            components["Spot {:d}".format(i)] = xo.eval_in_model(sec[i-1].flux(theta=omega[i-1]*tc),map_soln, model=model)*map_soln['scale']
+            components["Spot {:d}".format(i)] = pmx.eval_in_model(sec[i-1].flux(theta=omega[i-1]*tc),map_soln, model=model)*map_soln['scale']
             if map_soln['amp{:d}'.format(i)] < 0: maxcom.append(np.max(components["Spot {:d}".format(i)]))
             else: maxcom.append(np.min(components["Spot {:d}".format(i)]))
             gc.collect()
@@ -880,7 +880,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             ax1.plot(data['timeorig'], (data['fluxorig']/1000+1)-flux_model_orig, "k.", alpha=0.3, ms=2)
             ax1.plot([data['timeorig'][0],data['timeorig'][-1]],[0,0],'C2--')
             lll = "Model"
-        if isgap(t,gv) or (isgap(data['ort'],gv) and fulltime): ax0.plot(t2+data['mintim'], xo.eval_in_model(flux_model2,map_soln, model=model),marker='.',color="limegreen",label="Missing",ms=1,linestyle='')
+        if isgap(t,gv) or (isgap(data['ort'],gv) and fulltime): ax0.plot(t2+data['mintim'], pmx.eval_in_model(flux_model2,map_soln, model=model),marker='.',color="limegreen",label="Missing",ms=1,linestyle='')
         if fulltime: ax0.plot(data['ort']+data['mintim'],flux_model4,'C9.',label="Light curve model",ms=1,linestyle='')
         ax0.plot(data['timeorig'], flux_model_orig, "C1.", label=lll,ms=1,linestyle='')
         if initctrl: ax0.plot(t+data['mintim'], flux_model_guess,marker='.',color="dodgerblue",alpha=0.6, label="Initial model",ms=1,linestyle='')
@@ -901,17 +901,17 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             ax0.tick_params('both', length=7, width=1, which='major')
         ax1.set_ylabel("Residuals", fontsize=yls, weight=ylw)
         for tick in ax0.xaxis.get_major_ticks():
-            tick.label.set_fontsize(xts) 
-            tick.label.set_weight(xtw)
+            tick.label1.set_fontsize(xts) 
+            tick.label1.set_weight(xtw)
         for tick in ax0.yaxis.get_major_ticks():
-            tick.label.set_fontsize(yts) 
-            tick.label.set_weight(ytw)
+            tick.label1.set_fontsize(yts) 
+            tick.label1.set_weight(ytw)
         for tick in ax1.xaxis.get_major_ticks():
-            tick.label.set_fontsize(xts) 
-            tick.label.set_weight(xtw)
+            tick.label1.set_fontsize(xts) 
+            tick.label1.set_weight(xtw)
         for tick in ax1.yaxis.get_major_ticks():
-            tick.label.set_fontsize(yts) 
-            tick.label.set_weight(ytw)
+            tick.label1.set_fontsize(yts) 
+            tick.label1.set_weight(ytw)
         if savectrl: 
             save2 = save.split(".")
             if not fulltime: save2 = savename("{}_flux_inc{:d}_n{:d}{}.{}".format(save2[0],int(B['inc']),nspots,addon,save2[1]))
@@ -927,14 +927,14 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         ax1 = plt.subplot(gs[1],sharex=ax0)
         plt.subplots_adjust(hspace=0,top=0.933,bottom=0.082)
         for i in range(len(components.keys())): 
-            ax1.plot(tc+data['mintim'],components["Spot {}".format(i+1)]-maxcom[i],"C{}".format(knums[i%len(knums)]),marker='.',linestyle='',label="Spot {}".format(i+1),ms=1)
+            ax1.plot(tc+data['mintim'],components["Spot {}".format(i+1)]-maxcom[i],"C{}".format(cnums[i%len(cnums)]),marker='.',linestyle='',label="Spot {}".format(i+1),ms=1)
         if fulltime:
             ax0.plot(data['ort']+data['mintim'], data['orf'], "k.", alpha=0.3, ms=2, label="Data")
             lll = "Model for selected interval"
         else:
             ax0.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", alpha=0.3, ms=2, label="Data")
             lll = "Model"
-        if isgap(t,gv) or (isgap(data['ort'],gv) and fulltime): ax0.plot(t2+data['mintim'], xo.eval_in_model(flux_model2,map_soln, model=model),marker='.',color="limegreen",label="Missing",ms=1,linestyle='')
+        if isgap(t,gv) or (isgap(data['ort'],gv) and fulltime): ax0.plot(t2+data['mintim'], pmx.eval_in_model(flux_model2,map_soln, model=model),marker='.',color="limegreen",label="Missing",ms=1,linestyle='')
         if fulltime: ax0.plot(data['ort']+data['mintim'],flux_model4,'C9.',label="Light curve model",ms=1)
         ax0.plot(data['timeorig'], flux_model_orig, "C1.", label=lll, ms=1,linestyle='')
         if initctrl: ax0.plot(t+data['mintim'], flux_model_guess,marker='.',color="dodgerblue", alpha=0.6, label="Initial model",ms=1,linestyle='')
@@ -951,17 +951,17 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             ax0.tick_params('both', length=7, width=1, which='major')
         ax1.set_ylabel("Relative flux", fontsize=yls, weight=ylw)
         for tick in ax0.xaxis.get_major_ticks():
-            tick.label.set_fontsize(xts) 
-            tick.label.set_weight(xtw)
+            tick.label1.set_fontsize(xts) 
+            tick.label1.set_weight(xtw)
         for tick in ax0.yaxis.get_major_ticks():
-            tick.label.set_fontsize(yts) 
-            tick.label.set_weight(ytw)
+            tick.label1.set_fontsize(yts) 
+            tick.label1.set_weight(ytw)
         for tick in ax1.xaxis.get_major_ticks():
-            tick.label.set_fontsize(xts) 
-            tick.label.set_weight(xtw)
+            tick.label1.set_fontsize(xts) 
+            tick.label1.set_weight(xtw)
         for tick in ax1.yaxis.get_major_ticks():
-            tick.label.set_fontsize(yts) 
-            tick.label.set_weight(ytw)
+            tick.label1.set_fontsize(yts) 
+            tick.label1.set_weight(ytw)
         if savectrl: 
             save2 = save.split(".")
             if not fulltime: save2 = savename("{}_components_inc{:d}_n{:d}{}.{}".format(save2[0],int(B['inc']),nspots,addon,save2[1]))
@@ -976,16 +976,17 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         plt.figure(1,figsize=(13, 8))
         if fulltime:
             plt.plot(data['ort']+data['mintim'], data['orf'], "k.", alpha=0.3, ms=2, label="Data")
-            plt.plot(data['ort']+data['mintim'],flux_model4,marker=".",color='red',label="Light curve model",ms=msc,linestyle='')
+            plt.plot(data['ort']+data['mintim'],flux_model4,marker=".",color='C3',label="Light curve model",ms=msc,linestyle='')
             tcon = data['ort']+data['mintim']
             if np.max(data['orf']) > 1.02*mf: plt.ylim(top=1.02*mf)
         else:
             plt.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", alpha=0.3, ms=2, label="Data")
-            plt.plot(data['timeorig'], flux_model_orig, marker=".",color='red', label="Light curve model",ms=msc,linestyle='')
+            plt.plot(data['timeorig'], flux_model_orig, marker=".",color='C3', label="Light curve model",ms=msc,linestyle='')
             tcon = data['timeorig']
             if np.max(data['fluxorig']/1000+1) > 1.02*mf: plt.ylim(top=1.02*mf)
         mfcon = np.array([mf for _ in tcon])
-        for i in range(len(components.keys())): plt.plot(tcon,mfcon+(components["Spot {}".format(i+1)]-maxcom[i]),"C{}".format(knums[i%len(knums)]),marker = '.',label="Spot {}".format(i+1),ms=msc,linestyle='')
+        if nspots != 1:
+            for i in range(len(components.keys())): plt.plot(tcon,mfcon+(components["Spot {}".format(i+1)]-maxcom[i]),"C{}".format(cnums[i%len(cnums)]),marker = '.',label="Spot {}".format(i+1),ms=msc,linestyle='')
         plt.gca().get_xaxis().set_major_formatter(ScalarFormatter(useOffset=False))
         plt.gca().get_yaxis().set_major_formatter(ScalarFormatter(useOffset=False))
         plt.xlabel("TBJD [days]", fontsize=xls, weight=xlw, labelpad=xlp)
@@ -1036,11 +1037,11 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         if publication: plt.subplots_adjust(bottom=0.18,right=1,top=0.967)
         ax.grid(linestyle='--')        
         for tick in ax.xaxis.get_major_ticks():
-            tick.label.set_fontsize(xts) 
-            tick.label.set_weight(xtw)
+            tick.label1.set_fontsize(xts) 
+            tick.label1.set_weight(xtw)
         for tick in ax.yaxis.get_major_ticks():
-            tick.label.set_fontsize(yts) 
-            tick.label.set_weight(ytw)
+            tick.label1.set_fontsize(yts) 
+            tick.label1.set_weight(ytw)
         if savectrl: 
             save2 = save.split(".")
             save2 = savename("{}_map_inc{:d}_n{:d}{}.{}".format(save2[0],int(B['inc']),nspots,addon,save2[1]))
@@ -1094,10 +1095,10 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         if not fscale: del map_soln['scale']
         with model:
             if platform != 'darwin': 
-                trace = pm.sample(tune=1000,draws=2500,start=map_soln,chains=nchains,cores=ncores,step=xo.get_dense_nuts_step(target_accept=0.9),return_inferencedata=False)
+                trace = pm.sample(tune=1000,draws=2500,start=map_soln,chains=nchains,cores=ncores,return_inferencedata=False, target_accept=0.9)
             else:
                 import multiprocessing as mp
-                trace = pm.sample(tune=1000,draws=2500,start=map_soln,chains=1,cores=ncores,step=xo.get_dense_nuts_step(target_accept=0.9),mp_ctx=mp.get_context("fork"),return_inferencedata=False)
+                trace = pm.sample(tune=1000,draws=2500,start=map_soln,chains=1,cores=ncores,mp_ctx=mp.get_context("fork"),return_inferencedata=False, target_accept=0.9)
         if not diffctrl: map_soln['alpha'] = alpha
         if not fscale: map_soln['scale'] = scale
 
@@ -1159,17 +1160,17 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             ax[0].set_title("TIC{}".format(tic),weight='bold')
             ax[1].imshow(mu,origin="lower",extent=(-180, 180, -90, 90),cmap="plasma")
             for tick in ax[0].xaxis.get_major_ticks():
-                tick.label.set_fontsize(xts) 
-                tick.label.set_weight(xtw)
+                tick.label1.set_fontsize(xts) 
+                tick.label1.set_weight(xtw)
             for tick in ax[0].yaxis.get_major_ticks():
-                tick.label.set_fontsize(yts) 
-                tick.label.set_weight(ytw)
+                tick.label1.set_fontsize(yts) 
+                tick.label1.set_weight(ytw)
             for tick in ax[1].xaxis.get_major_ticks():
-                tick.label.set_fontsize(xts) 
-                tick.label.set_weight(xtw)
+                tick.label1.set_fontsize(xts) 
+                tick.label1.set_weight(xtw)
             for tick in ax[1].yaxis.get_major_ticks():
-                tick.label.set_fontsize(yts) 
-                tick.label.set_weight(ytw)
+                tick.label1.set_fontsize(yts) 
+                tick.label1.set_weight(ytw)
             if savectrl: 
                 save2 = save.split(".")
                 save2 = savename("{}_mean-map_inc{:d}_n{:d}{}.{}".format(save2[0],int(B['inc']),nspots,addon,save2[1]))
