@@ -48,7 +48,7 @@ from scipy.ndimage import uniform_filter as smooth
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 def helpf():
-    print("\n  Program bassman.py for MacOS and Linux written by K. Bicz, ver. of Oct. 27, 2022.")
+    print("\n  Program bassman.py for MacOS and Linux written by K. Bicz, ver. of Apr. 13, 2023.")
     print("  Recreating possible locations, sizes and amplitudes of spots on given star.\n")
     print("  Usage: bassman.py [-star=str] [-nspots=int] [-prec=float] [-dprec=float] [-pers=float] [-omb=float]")
     print("         [-obm=float] [-adap=int] [-nstep=int] [-mprod=float] [-finc[=float]] [-gv=float] [-ylm=int]")
