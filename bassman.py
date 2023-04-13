@@ -56,9 +56,9 @@ def helpf():
     print("         [-smin=float] [-smax=float] [-lamin=float] [-lamax=float] [-lomin=float] [-lomax=float]")
     print("         [-gsp=int] [-model=str] [-aran=float] [-sran=float] [-laran=float] [-loran=float]")
     print("         [-falpha=float] [-tbjd=float] [-ncores=int] [-nchains=int] [-chi=float] [-logp=float]")
-    print("         [-temp=float] [-terr=float] [--pran] [--filter] [--init] [--diff] [--force] [--nodisp]") 
-    print("         [--sample] [--noadap] [--fulltime] [--nosphere] [--nochi] [--check] [--ps] [--fscale]")
-    print("         [--pcom] [--liveplot] [--modelonly] [--singlecache]")
+    print("         [-temp=float] [-terr=float] [-nth=int] [--pran] [--filter] [--init] [--diff] [--force] ") 
+    print("         [--nodisp] [--sample] [--noadap] [--fulltime] [--nosphere] [--nochi] [--check] [--ps]")
+    print("         [--fscale] [--pcom] [--liveplot] [--modelonly] [--singlecache]")
     print()
     print("         option -star : file with parameters of star (default star = star_params.npz).")
     print("                -nspots : number of spots for starting model (default nspots = 1).")
@@ -99,14 +99,15 @@ def helpf():
     print("                -logp : after reaching selected logp value program accepts calculated model.")
     print("                -temp : temperature of analysed star (default value is read from TESS_params file).")
     print("                -terr : error of the temperature of analysed star (use only with --pran).")
+    print("                -nth : analyze every nth point in data to avoid big RAM usage (default nth = 1).")
     print("                --pran : print analicitcal solutions from Notsu et al. 2019, ApJ, 876:58.")
     print("                --filter : filter output images.")
     print("                --init : plot initial model.")
     print("                --diff : turns on differential rotation.")
     print("                --nodisp : Turns off displaying recreated stellar spots.")
     print("                --force: force to create model for selected nspots.")
-    print("                --sample: uses sampling to determine many best models.")
-    print("                --noadap: turns off adapting precision to data.")
+    print("                --sample : uses sampling to determine many best models.")
+    print("                --noadap : turns off adapting precision to data.")
     print("                --fulltime : reconstruct light curve for whole sector(s).")
     print("                --nosphere : program does not create rotating star sphere gif.")
     print("                --nochi : do not write chi^2 values in legend.")
@@ -355,7 +356,7 @@ def read_model(file):
     try: return np.array(amplw), np.array(sigms), np.array(lats), np.array(lons), alpha, scale
     except: return np.array(amplw), np.array(sigms), np.array(lats), np.array(lons), alpha, 1/len(amplw)
 
-def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alphatab,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,aran,sran,laran,loran,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly):
+def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alphatab,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,aran,sran,laran,loran,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly,nth):
 
     if publication:
         legpara = {'size':15,'weight':'bold'}
@@ -378,7 +379,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     cnums = [0,1,2,4,5,6,7,9,8]
     data = np.load(params, allow_pickle=True)
     B = data["B"].item()
-    t = data["t"]
+    t = data["t"][::nth]
     tbjdnam = str(t[0]+data['mintim'])
     if tbjdctrl:
         if (tbjd < t[0] + data['mintim'] or tbjd > t[-1] + data['mintim']): print("% Warning! Given TBJD = {} is not in observational interval {}-{}.".format(tbjd,t[0] + data['mintim'],t[-1] + data['mintim']))
@@ -391,8 +392,8 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     if diffctrl: t_ani = np.linspace(tbjd,tbjd+3*B['prot'],100)
     else: t_ani = np.linspace(tbjd,tbjd+B['prot'],100)
 
-    flux = data["flux"]
-    sigma = data['sigma']
+    flux = data["flux"][::nth]
+    sigma = data['sigma'][::nth]
     if not staractrl: ampl = np.mean(flux)+1.4*np.std(flux)
     else: ampl = stara
     omega_eq, addon = 360/B['prot'], '_diff'
@@ -1183,7 +1184,7 @@ if __name__ == "__main__":
     init()
     if "./" in argv[0]: argv[0] = argv[0][2:]
     elif "/" in argv[0]: argv[0] = argv[0].split("/")[-1]
-    command, publication = " ".join(argv), False
+    command, publication, nth = " ".join(argv), False, 1
     params, save = 'star_params.npz', "sspots.pdf"
     alu, slu = np.array((-0.1,0.0)), np.array((0.0,0.05))
     lalu, lolu = np.array((-70.0,70.0)), np.array((-180.0,180.0))
@@ -1267,6 +1268,7 @@ if __name__ == "__main__":
         elif "-logp=" in arg: logpv, logpvctrl = str_to_num(arg.split("=")[-1],float,"logpv"), True
         elif "-temp=" in arg: temper, temperctrl = abs(str_to_num(arg.split("=")[-1],float,"temperature")), True
         elif "-terr=" in arg: terr, terrctrl = abs(str_to_num(arg.split("=")[-1],float,"temperature error")), True
+        elif "-nth=" in arg: nth = abs(str_to_num(arg.split("=")[-1],int,"nth"))
         elif arg == "--pran": pran = True
         elif arg == "--filter": filterctrl = True
         elif arg == "--init": initctrl = True
@@ -1299,7 +1301,7 @@ if __name__ == "__main__":
     gc.collect()
     
     try:
-        recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alpha,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,aran,sran,laran,loran,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly)
+        recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alpha,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,aran,sran,laran,loran,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly,nth)
     except KeyboardInterrupt:
         if '--singlecache' not in argv: system("rm -rf {}".format(theano_dir))
         print("\n> Program shut down by user.")
