@@ -16,13 +16,17 @@ if ("--singlecache" not in argv and "-h" not in argv and '--help' not in argv) o
     while exists(theano_dir): theano_dir, i = "/{}/{}/.theano/c{:d}/".format(homename,profile,i), i+1
 
     if platform != "darwin": 
-        if starry.__version__ == "1.0.0" : line = "[global]\ndevice = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas".format(theano_dir)
-        else: line = "[global]\ndevice = cpu\nbase_compiledir={}".format(theano_dir)
-    else: line = "[global]\ndevice = cpu\nbase_compiledir={}".format(theano_dir)
+        import distro
+        if distro.id() == 'ubunut' or distro.id() == 'debian' or distro.id() == 'mint' or 'pop' in distro.id():
+            line = "[global]\ndistro = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas".format(theano_dir)
+        else:
+            line = "[global]\ndistro = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib64/ -lopenblas".format(theano_dir)
+        del distro
+    else: line = "[global]\ndistro = cpu\nbase_compiledir={}".format(theano_dir)
     with open("/{}/{}/.theanorc".format(homename,profile),'w') as of: of.write(line)
     del line
 
-del profile 
+del profile
 
 import gc
 import sys
