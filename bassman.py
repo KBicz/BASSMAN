@@ -332,7 +332,7 @@ def analytical_model(temp,ampl,minf):
         aspot = 100*(1-minf/ampl)*(1-(tspot/temp)**4)**(-1)
         return tspot, aspot
     else:
-        return 'nan', 'nan'
+        return 0.0, 0.0
 
 def read_model(file):
     if not exists(file):
@@ -750,9 +750,12 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     # Analytical and estimated temperatures and areas of spots
     fs, aspots, terrmean = 0, 0, 0
     for i in range(1,nspots+1): 
-        fs += tns['flux{:d}'.format(i)]
+        try:    
+            fs += tns['flux{:d}'.format(i)]
+            terrmean += tns['flux{:d}err'.format(i)]**2
+        except:
+            fs, terrmean = 0.0, 0.0
         aspots += tns['psize{:d}'.format(i)]
-        terrmean += tns['flux{:d}err'.format(i)]**2
         gc.collect()
     atemp, aspoteddnes = analytical_model(float(B['temp']),ampl,min(flux_model_orig))
     if pran:

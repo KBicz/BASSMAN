@@ -104,25 +104,31 @@ def toggle_selector(event):
         toggle_selector.RS.set_active(True)
 
 def select_area(current_ax,green = False):
-    if green: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, drawtype='box', useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True,rectprops = dict(facecolor='C2', edgecolor = 'black', alpha=0.2, fill=True))
-    else: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, drawtype='box', useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True)
+    try:
+        if green: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, drawtype='box', useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True,rectprops = dict(facecolor='C2', edgecolor = 'black', alpha=0.2, fill=True))
+        else: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, drawtype='box', useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True)
+    except:
+        if green: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True,rectprops = dict(facecolor='C2', edgecolor = 'black', alpha=0.2, fill=True))
+        else: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True)
     plt.connect('key_press_event',toggle_selector)
 
 def prepare(tic,file,lc,sigma,ydeg,udeg,amp,dinc,full,display,force,noerr,nctrl,npts,sigmarmf,rmfctrl,niter,rmpartsctrl,p0,p0ctrl,modelfile,modelctrl,editfile,editctrl):
     try:
-        stars = np.genfromtxt("/usr/local/bin/TESS_stars_params.dat",dtype='U13,U6,U10,U10,U10,U10,U10',names=['tic','vsini','rad','pls','prot','temp','logg'])
+        stars = np.genfromtxt("/home/kbicz/Astronomia/Programs/Python/bassman/TESS_stars_params.dat",dtype='U13,U6,U10,U10,U10,U10,U10',names=['tic','vsini','rad','pls','prot','temp','logg'])
     except:
-        print("\a# Error! No file TESS_stars_params.dat in folder /usr/local/bin")
+        stars = np.genfromtxt("/home/kbicz/Astronomia/Programy/bassman/TESS_stars_params.dat",dtype='U13,U6,U10,U10,U10,U10,U10',names=['tic','vsini','rad','pls','prot','temp','logg'])
+    try:
+        wh = np.where(stars['tic'] == tic)
+        vsini = stars['vsini'][wh][0]
+        rad = stars['rad'][wh][0]
+        pls = stars['pls'][wh][0]
+        prot = stars['prot'][wh][0]
+        temp = stars['temp'][wh][0]
+        logg = stars['logg'][wh][0].lower()
+        if prot == 'nan': prot = pls
+    except:
+        print("\a# Error! There is no such star in TESS_stars_params.dat file!")
         exit()
-
-    wh = np.where(stars['tic'] == tic)
-    vsini = stars['vsini'][wh][0]
-    rad = stars['rad'][wh][0]
-    pls = stars['pls'][wh][0]
-    prot = stars['prot'][wh][0]
-    temp = stars['temp'][wh][0]
-    logg = stars['logg'][wh][0].lower()
-    if prot == 'nan': prot = pls
 
     if not editctrl:
         data = np.genfromtxt(lc,dtype="float,float,float,float",names=["time","flux","err","sth"])
@@ -154,8 +160,8 @@ def prepare(tic,file,lc,sigma,ydeg,udeg,amp,dinc,full,display,force,noerr,nctrl,
         flux = rmflares(time,flux,sigmarmf,display,nctrl,npts,min(data['time']),niter,data['flux']/1000+1)
 
     if not full and not editctrl:
-        fig, current_ax = plt.subplots(figsize=(12,7))
-        fig.canvas.set_window_title('Select area')
+        fig = plt.figure("Select area",figsize=(12,7))
+        current_ax = plt.gca()
         plt.get_current_fig_manager().window.wm_geometry("+0+190")
         plt.subplots_adjust(left = .14, top = .88, right = .95)
         plt.gca().get_xaxis().set_major_formatter(ScalarFormatter(useOffset=False))
@@ -303,10 +309,9 @@ def prepare(tic,file,lc,sigma,ydeg,udeg,amp,dinc,full,display,force,noerr,nctrl,
     try:
         if str(temp) != "nan" and str(logg) != 'nan':
             try:
-                tempers = np.genfromtxt("/usr/local/bin/claretld.dat",dtype='float,float,float,float',names=['logg','temp','u1','u2'])
+                tempers = np.genfromtxt("/home/kbicz/Astronomia/Programs/Python/bassman/claretld.dat",dtype='float,float,float,float',names=['logg','temp','u1','u2'])
             except:
-                print("\a# Error! No file claretld.dat in folder /usr/local/bin")
-                exit()
+                tempers = np.genfromtxt("/home/kbicz/Astronomia/Programy/bassman/claretld.dat",dtype='float,float,float,float',names=['logg','temp','u1','u2'])
             tempcl = int(round(temp / 100.0)) * 100
             loggcl = round(logg * 2) / 2
             whlogg = np.where(tempers['logg']==loggcl)
