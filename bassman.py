@@ -386,10 +386,11 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     t = data["t"][::nth]
     tbjdnam = str(t[0]+data['mintim'])
     if tbjdctrl:
-        if (tbjd < t[0] + data['mintim'] or tbjd > t[-1] + data['mintim']): print("% Warning! Given TBJD = {} is not in observational interval {}-{}.".format(tbjd,t[0] + data['mintim'],t[-1] + data['mintim']))
         tbjdnam = str(tbjd)
-        while tbjd < t[0] + data['mintim']: tbjd += B['prot']
-        while tbjd > t[-1] + data['mintim']: tbjd -= B['prot']
+        if (tbjd < t[0] + data['mintim'] or tbjd > t[-1] + data['mintim']): 
+            print("% Warning! Given TBJD = {} is not in observational interval {}-{}.".format(tbjd,t[0] + data['mintim'],t[-1] + data['mintim']))
+            while tbjd < t[0] + data['mintim']: tbjd += B['prot']
+            while tbjd > t[-1] + data['mintim']: tbjd -= B['prot']
         tbjd -= (data['mintim']+t[0])
     else: tbjd = t[0]-t[0]
 
@@ -536,13 +537,16 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             gc.collect()
             pm.Normal("obs", mu=flux_model, sd=sigma, observed=flux)
             gc.collect()
-            map_soln = pmx.optimize(vars=[*sspots.values(),*scalealpha],maxeval=10000,start=model.test_point)
+            if starry.__version__ == "1.0.0": pmx.optimize(vars=[*sspots.values(),*scalealpha],options={"maxiter": 10000},start=model.test_point)
+            else: map_soln = pmx.optimize(vars=[*sspots.values(),*scalealpha],maxeval=10000,start=model.test_point)
             gc.collect()
             if str(map_soln['flux_model'][0]) != "nan":
                 for i in range(1,nspots+1):
-                    map_soln = pmx.optimize(vars=[sspots['amp{:d}'.format(i)],sspots['sigma{:d}'.format(i)],sspots['lat{:d}'.format(i)],sspots['lon{:d}'.format(i)],*scalealpha],start=map_soln,maxeval=10000)
+                    if starry.__version__ == "1.0.0": map_soln = pmx.optimize(vars=[sspots['amp{:d}'.format(i)],sspots['sigma{:d}'.format(i)],sspots['lat{:d}'.format(i)],sspots['lon{:d}'.format(i)],*scalealpha],start=map_soln,options={"maxiter": 10000})
+                    else: map_soln = pmx.optimize(vars=[sspots['amp{:d}'.format(i)],sspots['sigma{:d}'.format(i)],sspots['lat{:d}'.format(i)],sspots['lon{:d}'.format(i)],*scalealpha],start=map_soln,maxeval=10000)
                     gc.collect()
-                map_soln, info = pmx.optimize(vars=[*sspots.values(),*scalealpha], start=map_soln, return_info=True, maxeval=10000)
+                if starry.__version__ == "1.0.0": map_soln, info = pmx.optimize(vars=[*sspots.values(),*scalealpha], start=map_soln, return_info=True, options={"maxiter": 10000})
+                else: map_soln, info = pmx.optimize(vars=[*sspots.values(),*scalealpha], start=map_soln, return_info=True, maxeval=10000)
                 gc.collect()
                 logp = -info.fun
             else:
