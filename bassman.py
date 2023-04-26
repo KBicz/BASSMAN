@@ -52,17 +52,16 @@ from scipy.ndimage import uniform_filter as smooth
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 def helpf():
-    print("\n  Program bassman.py for MacOS and Linux written by K. Bicz, ver. of Apr. 13, 2023.")
+    print("\n  Program bassman.py for Linux and MacOS written by K. Bicz, ver. of Apr. 26, 2023.")
     print("  Recreating possible locations, sizes and amplitudes of spots on given star.\n")
     print("  Usage: bassman.py [-star=str] [-nspots=int] [-prec=float] [-dprec=float] [-pers=float] [-omb=float]")
     print("         [-obm=float] [-adap=int] [-nstep=int] [-mprod=float] [-finc[=float]] [-gv=float] [-ylm=int]")
     print("         [-ampl=float] [-almin=float] [-almax=float] [-save[=file]] [-amin=float] [-amax=float]")
     print("         [-smin=float] [-smax=float] [-lamin=float] [-lamax=float] [-lomin=float] [-lomax=float]")
-    print("         [-gsp=int] [-model=str] [-aran=float] [-sran=float] [-laran=float] [-loran=float]")
-    print("         [-falpha=float] [-tbjd=float] [-ncores=int] [-nchains=int] [-chi=float] [-logp=float]")
-    print("         [-temp=float] [-terr=float] [-nth=int] [--pran] [--filter] [--init] [--diff] [--force] ") 
-    print("         [--nodisp] [--sample] [--noadap] [--fulltime] [--nosphere] [--nochi] [--check] [--ps]")
-    print("         [--fscale] [--pcom] [--liveplot] [--modelonly] [--singlecache]")
+    print("         [-gsp=int] [-model=str] [-falpha=float] [-tbjd=float] [-ncores=int] [-nchains=int]")
+    print("         [-chi=float] [-logp=float][-temp=float] [-terr=float] [-nth=int] [--pran] [--filter] [--init") 
+    print("         [--diff] [--force] [--nodisp] [--sample] [--noadap] [--fulltime] [--nosphere] [--nochi] ")
+    print("         [--check] [--ps] [--fscale] [--pcom] [--liveplot] [--modelonly] [--singlecache]")
     print()
     print("         option -star : file with parameters of star (default star = star_params.npz).")
     print("                -nspots : number of spots for starting model (default nspots = 1).")
@@ -91,10 +90,6 @@ def helpf():
     print("                -lomax : maximal longitude of stellar spots (default lomax = 180).")
     print("                -gsp : speed of gif (default gsp = 1).")
     print("                -model : file with starting parameters for spots (default = spots.txt).")
-    print("                -aran : amplitude range to fit spots using model (default aran = 0.015).")
-    print("                -sran : surface range to fit spots using model (default sran = 0.02).")
-    print("                -laran : latitude range to fit spots using model (default laran = 8.0).")
-    print("                -loran : longitude range to fit spots using model (default loran = 8.0).")
     print("                -falpha : value of differential rotation shear given by user (default falpha = 0.0).")
     print("                -tbjd : make images for selected TBJD (default it is the first time point from data).")
     print("                -ncores : use selected number of cores to sample data (default ncores = 4).")
@@ -360,7 +355,14 @@ def read_model(file):
     try: return np.array(amplw), np.array(sigms), np.array(lats), np.array(lons), alpha, scale
     except: return np.array(amplw), np.array(sigms), np.array(lats), np.array(lons), alpha, 1/len(amplw)
 
-def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alphatab,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,aran,sran,laran,loran,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly,nth):
+def checkmodel(amps,sizs,lats,lons,alpha,ampran,sizran,latran,lonran,alphatab,nspots):
+    values, ranges = [amps,sizs,lats,lons], [ampran,sizran,latran,lonran]
+    for val, rang, i in zip(values,ranges,["amplitudes","sizes","latitutdes",'longitudes']):
+        if np.max(val) > np.max(rang) or np.min(val) < np.min(rang) or alpha > np.max(alphatab) or alpha < np.min(alphatab):
+            print("\n\a# Error! One of the {} is not in the range of given parameters!".format(i))
+            exit()
+
+def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alphatab,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly,nth):
 
     if publication:
         legpara = {'size':15,'weight':'bold'}
@@ -422,6 +424,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     if modelctrl:
         amps,sigms,lats,lons,alphaa,scalemc = read_model(modelfile)
         ampso,sigmso,latso,lonso = amps.copy(),sigms.copy(),lats.copy(),lons.copy()
+        checkmodel(ampso,sigmso,latso,lonso,alphaa,ar,sr,lar,lor,alphatab,nspots)
         if not diffctrl: alpha = 0.0
         if not diffctrl and falphactrl: alpha = falpha
 
@@ -501,17 +504,11 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
                     lons.append(get_random(lor[0],lor[1]))
                 amps, sigms, lats, lons = np.array(amps), np.array(sigms), np.array(lats), np.array(lons)
             elif modelctrl and iterat > 1:
-                amps = [get_random(ampso[n]-aran,ampso[n]+aran) for n in range(nspots)]
-                sigms = [get_random(sigmso[n]-sran,sigmso[n]+sran) for n in range(nspots)]
-                lats = [get_random(latso[n]-laran,latso[n]+laran) for n in range(nspots)]
-                lons = [get_random(lonso[n]-loran,lonso[n]+loran) for n in range(nspots)]
-                for n in range(nspots):
-                    if amps[n] > 0 and alu[1] <= 0: amps[n] = 0.0
-                    if sigms[n] < 0: sigms[n] = 0.001
-                    if lats[n] > 90: lats[n] = 90.0
-                    if lats[n] < -90: lats[n] = -90.0
-                    if lons[n] > 180: lons[n] = 180.0
-                    if lons[n] < -180: lons[n] = -180.0
+                if iterat < 2: print("\n# Spot model with given model parameters does not converge! BASSMAN turns on normal mode.")
+                amps = [get_random(ar[0],ar[1]) for _ in range(nspots)]
+                sigms = [get_random(sr[0],sr[1]) for _ in range(nspots)]
+                lats = [get_random(lar[0],lar[1]) for _ in range(nspots)]
+                lons = [get_random(lor[0],lor[1]) for _ in range(nspots)]
             for i in range(1,nspots+1):
                 sspots['amp{:d}'.format(i)] = pm.Uniform("amp{:d}".format(i), lower=alu[0], upper=alu[1], testval=amps[i-1])
                 sspots['sigma{:d}'.format(i)] = pm.Uniform("sigma{:d}".format(i), lower=slu[0], upper=slu[1], testval=sigms[i-1])
@@ -1195,18 +1192,17 @@ if __name__ == "__main__":
     init()
     if "./" in argv[0]: argv[0] = argv[0][2:]
     elif "/" in argv[0]: argv[0] = argv[0].split("/")[-1]
-    command, publication, nth = " ".join(argv), False, 1
     params, save = 'star_params.npz', "sspots.pdf"
+    command, publication, nth = " ".join(argv), False, 1
     alu, slu = np.array((-0.1,0.0)), np.array((0.0,0.05))
+    sample, noadap, nspots, force = False, False, 1, False
     lalu, lolu = np.array((-70.0,70.0)), np.array((-180.0,180.0))
     prec, dprec, temper, temperctrl = 0.000107, 0.00005, 5777, False
-    sample, noadap, nspots, force = False, False, 1, False
     adap, nstep, gsp, falpha, falphactrl, terr = 5, 30, 1, 0, False, 0.0
-    aran, sran, laran, loran, mprod, gv, obm, stara  = 0.015, 0.02, 8.0, 8.0, 8, 0.2, 0.005, 1
-    def_inclination, finc, nosphere, nochi, terrctrl = 50, False, False, False, False
-    alpha, prs, ylm, omb = [0.,1.], 0.1, 25, 0.015
-    diffctrl, filterctrl, fulltime, displayctrl, savectrl = False, False, False, True, False
     modelfile, modelctrl, staractrl, modelonly = "spots.txt", False, False, False
+    def_inclination, finc, nosphere, nochi, terrctrl = 50, False, False, False, False
+    diffctrl, filterctrl, fulltime, displayctrl, savectrl = False, False, False, True, False
+    alpha, prs, ylm, omb, mprod, gv, obm, stara  = [0.,1.], 0.1, 25, 0.015, 8, 0.2, 0.005, 1
     tbjd, tbjdctrl, initctrl, ncores, nchains, pran, liveplot = 0, False, False, 4, 4, False, False
     chiv, logpv, chivctrl, logpvctrl, check, pcom, ps, fscale = 10000, 10000, False, False, False, False, False, False
     for arg in argv:    
@@ -1267,10 +1263,6 @@ if __name__ == "__main__":
         elif "-model" in arg:
             modelctrl = True
             if "=" in arg and arg[-1] != '=': modelfile = arg.split("=")[1] 
-        elif "-aran=" in arg: aran = abs(str_to_num(arg.split("=")[-1],float,"aran"))
-        elif "-sran=" in arg: sran = abs(str_to_num(arg.split("=")[-1],float,"sran"))
-        elif "-laran=" in arg: laran = abs(str_to_num(arg.split("=")[-1],float,"laran"))
-        elif "-loran=" in arg: loran = abs(str_to_num(arg.split("=")[-1],float,"loran"))
         elif "-falpha=" in arg: falpha, falphactrl = abs(str_to_num(arg.split("=")[-1],float,"falpha")), True
         elif "-tbjd=" in arg: tbjd, tbjdctrl = str_to_num(arg.split("=")[-1],float,"tbjd"), True
         elif '-ncores=' in arg: ncores = abs(str_to_num(arg.split("=")[-1],int,"ncores"))
@@ -1312,7 +1304,7 @@ if __name__ == "__main__":
     gc.collect()
     
     try:
-        recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alpha,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,aran,sran,laran,loran,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly,nth)
+        recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,stara,alpha,alu,slu,lalu,lolu,adap,mprod,savectrl,save,force,displayctrl,sample,noadap,finc,gsp,nstep,diffctrl,filterctrl,fulltime,nosphere,command,modelfile,modelctrl,staractrl,tbjd,tbjdctrl,initctrl,ncores,nchains,chiv,logpv,chivctrl,logpvctrl,nochi,temper,temperctrl,check,pcom,ps,fscale,pran,falpha,falphactrl,publication,liveplot,terrctrl,terr,modelonly,nth)
     except KeyboardInterrupt:
         if '--singlecache' not in argv: system("rm -rf {}".format(theano_dir))
         print("\n> Program shut down by user.")
