@@ -2,19 +2,19 @@
 
 from tqdm import tqdm
 from os import system
+from PyAstronomy import pyasl
 from sys import argv, platform
 
-import matplotlib
 import numpy as np
 import lightkurve as lk
 import matplotlib.pyplot as plt
 
 def helpf():
     print("\n Usage: tess_lightcurve.py <-tic=str> [-sec=int] [-mark=float] [--save] [--long] [--short] [--fast]") 
-    print("                             [--nodisp] [--mask] [--sap]\n")
+    print("                             [--nodisp] [--mask] [--sap] [--jd] [--hjd -ra=f64 -dec=f64]\n")
     exit()
 
-def main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markctrl):
+def main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markctrl,ra,dec,hjdctrl,jdctrl):
     print("> Downloading data for {}{}.".format(beg,tic))
     if secctrl: search_result = lk.search_lightcurve('{}{}'.format(beg,tic), mission='TESS', exptime=mode,sector=sec)
     else: search_result = lk.search_lightcurve('{}{}'.format(beg,tic), mission='TESS', exptime=mode)
@@ -28,11 +28,13 @@ def main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markct
     ft = "flux"
     if sapctrl: ft = "sap_flux"
     print("> Data successfully downloaded!")
-    time, flux_pdc, err, origflux = [], [], [], []
+    time, flux_pdc, err, origflux, utc, jd = [], [], [], [], [], []
     for tlc in tqdm(tlcs,"Quality flag correction"):
         if tlc.flux_origin == 'pdcsap_flux':
             wh = np.where(tlc['quality'] == 0)
             time = [*time,*tlc['time'][wh].to_value(format='btjd')]
+            utc = [*utc,*tlc['time'][wh].utc.iso]
+            jd = [*jd,*tlc['time'][wh].to_value(format='jd')]
             helpflux = tlc[ft][wh].to_value()
             helperr = tlc[ft+'_err'][wh].to_value()
             mean_flux = np.mean(helpflux)
@@ -41,8 +43,12 @@ def main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markct
             helperr = helperr/mean_flux*1000
             flux_pdc = [*flux_pdc,*helpflux]
             err = [*err,*helperr]
-    time, flux_pdc, err = np.array(time), np.array(flux_pdc), np.array(err)
+    time, flux_pdc, err, utc = np.array(time), np.array(flux_pdc), np.array(err), np.array(utc)
+    for i in range(len(utc)): utc[i] = utc[i].replace(" ","T")
 
+
+    if jdctrl: utc = np.array(jd)
+    if hjdctrl: utc = np.array([pyasl.helio_jd(jdelement-2.4e6,ra,dec) for jdelement in jd])
     if maskctrl:
         if not secctrl: masks_result = lk.search_targetpixelfile('{}{}'.format(beg,tic),mission="TESS",exptime=mode)
         else: masks_result = lk.search_targetpixelfile('{}{}'.format(beg,tic),sector=sec,mission="TESS",exptime=mode)
@@ -50,12 +56,10 @@ def main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markct
         else:
             if display:
                 for mask in tqdm(masks_result,"Preparing masks"): 
-                    fig = plt.figure(figsize=(6,5))
+                    wtit = " ".join(str(mask).split()[22:25])+" TBJD = {}".format(tpf.time[0].to_value('btjd'))
+                    fig = plt.figure(wtit,figsize=(6,5))
                     tpf = mask.download(quality_bitmask='default')
                     tpf.plot(ax=fig.gca(),aperture_mask=tpf.pipeline_mask)
-                    fig = plt.gcf()
-                    wtit = " ".join(str(mask).split()[22:25])+" TBJD = {}".format(tpf.time[0].to_value('btjd'))
-                    fig.canvas.set_window_title(wtit)
                     plt.subplots_adjust(left=0.125,bottom=0.11,right=0.933,top=0.88)
     
     if display:    
@@ -89,7 +93,9 @@ def main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markct
         if sec < 10: secsav = "0{}".format(sec)
         if secctrl: savename = "lc_{}_s{}_{}.dat".format(tic,secsav,mode)
         else: savename = "lc_{}_all_{}.dat".format(tic,mode)
-        np.savetxt(savename, np.transpose([time,flux_pdc,err,np.ones(len(time))*np.mean(origflux)]))
+        #np.savetxt(savename, np.transpose([time,flux_pdc,err,np.ones(len(time))*np.mean(origflux)]))
+        if hjdctrl or jdctrl: np.savetxt(savename, np.transpose([time,flux_pdc,err,utc]))
+        else: np.savetxt(savename, np.transpose([time,flux_pdc,err,utc]),fmt=['%20s','%15s','%15s','%27s'])
 
     if platform != "win32": system("rm -rf ~/.lightkurve-cache/mastDownload/TESS ~/.lightkurve-cache/mastDownload/HLSP &>/dev/null")
 
@@ -101,6 +107,7 @@ if __name__ == "__main__":
     maskctrl, figsave = False, False
     tictrl, hdctrl = False, False
     markt, markctrl = 0, False
+    ra, dec, hjdctrl, jdctrl = 341.707214, 44.333993, False, False
 
     if len(argv) == 1: helpf()
     for arg in argv:
@@ -119,12 +126,20 @@ if __name__ == "__main__":
         elif arg == '--sap': sapctrl = True
         elif arg == '--nodisp': display = False
         elif arg == '--figsave': figsave = True
+        elif arg == '--jd': jdctrl = True
+        elif arg == '--hjd': hjdctrl = True
+        elif '-ra=' in arg: ra = float(arg.split("=")[1])
+        elif '-dec=' in arg: ra = float(arg.split("=")[1])
+
     
+    if jdctrl and hjdctrl: 
+        print("You can download data in JD or HJD, not in both. Downloading in JD.")
+        hjdctrl = False
     if tictrl and not hdctrl: beg = "TIC"
     elif not tictrl and hdctrl: beg = "HD"
     else: helpf()
 
     if "TIC" in tic: tic = ''.join(tic.split("TIC"))
 
-    try: main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markctrl)
+    try: main(tic,sec,secctrl,savectrl,mode,maskctrl,beg,sapctrl,figsave,markt,markctrl,ra,dec,hjdctrl,jdctrl)
     except KeyboardInterrupt: print("> Program shut down by user.")
