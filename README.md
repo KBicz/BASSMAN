@@ -4,7 +4,7 @@ BASSMAN (Best rAndom StarSpots Model calculAtioN) is the software to model the s
 
 The software to work properly needs MacOS or Linux (for more advanced users WSL will also work). Recommended Python version between 3.6.8 - 3.11.*. To install the software you can use python codes in the direcory with data or put them in the folder where the enviromental wariable is added to the path. You have to put files claretld.dat and TESS_stars_params.dat to the /usr/local/bin/ folder. To install all of the needed libraries for Python run the install_python_modules.sh script. 
 
-If you have python 3.9.5 or higher install starry ver. 1.2.0 instead of starry ver. 1.0.0 from the insttallation script.
+If you have python 3.9.5 or higher install starry ver. 1.2.0 instead of starry ver. 1.0.0 from the installation script.
 
 File bassman_manual.pdf is a short instruction how to use each of the programs. Also programs bassman.py, tess_lightcurve.py, npz_plot.py and star_prep_bassman.py support -h and --help keys to display information about themselves. 
 
