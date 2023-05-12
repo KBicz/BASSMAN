@@ -108,7 +108,7 @@ def select_area(current_ax,green = False):
         if green: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, drawtype='box', useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True,rectprops = dict(facecolor='C2', edgecolor = 'black', alpha=0.2, fill=True))
         else: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, drawtype='box', useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True)
     except:
-        if green: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True,rectprops = dict(facecolor='C2', edgecolor = 'black', alpha=0.2, fill=True))
+        if green: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True,props = dict(facecolor='C2', edgecolor = 'black', alpha=0.2, fill=True))
         else: toggle_selector.RS = RectangleSelector(current_ax, line_select_callback, useblit=True,button=[1, 3],minspanx=5,minspany=5,spancoords='pixels',interactive=True)
     plt.connect('key_press_event',toggle_selector)
 
