@@ -1289,9 +1289,9 @@ if __name__ == "__main__":
         elif arg == '--pub': publication = True
         elif arg == '--pcom': pcom = True
         elif arg == '--liveplot': liveplot = True
-        elif arg == '--modelonly': modelonly = True
         elif (("-h" in arg and len(arg) == 2) or arg == "--help"): helpf()
     
+    if "--modelonly" in argv: modelonly = True
     if len(argv) == 1 and not exists(params): helpf()
     if not exists(params):
         print("\a#Error! There is no such file as {} in this folder!".format(params))
