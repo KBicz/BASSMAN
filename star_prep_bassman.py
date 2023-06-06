@@ -237,7 +237,7 @@ def prepare(tic,file,lc,sigma,ydeg,udeg,amp,dinc,full,display,force,noerr,nctrl,
             try:
                 x1o = x1p
                 fig, current_ax = plt.subplots(figsize=(12,7))
-                fig.canvas.set_window_title('Select area no. {} to remove.'.format(nparts+1))
+                #fig.canvas.set_window_title('Select area no. {} to remove.'.format(nparts+1))
                 plt.get_current_fig_manager().window.wm_geometry("+0+190")
                 plt.subplots_adjust(left = .14, top = .88, right = .95)
                 plt.gca().get_xaxis().set_major_formatter(ScalarFormatter(useOffset=False))
