@@ -1,0 +1,1 @@
+bassman.py --singlecache -finc=90 -nspots=3 -ampl=1.0263504312180327 --pran --liveplot -prec=0.0003
