@@ -17,8 +17,10 @@ if ("--singlecache" not in argv and "-h" not in argv and '--help' not in argv) o
 
     if platform != "darwin": 
         import distro
-        if distro.id() == 'ubuntu' or distro.id() == 'debian' or distro.id() == 'mint' or 'pop' in distro.id():
+        if distro.id() == 'debian' or distro.id() == 'mint' or 'pop' in distro.id():
             line = "[global]\ndistro = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lopenblas".format(theano_dir)
+        elif distro.id() == 'ubuntu':
+            lline = "[global]\ndistro = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib/x86_64-linux-gnu/openblas-pthread/ -lblas".format(theano_dir)
         else:
             line = "[global]\ndistro = cpu\nbase_compiledir={}\n\n[blas]\nldflags= -L/usr/lib64/ -lopenblas".format(theano_dir)
         del distro
@@ -534,7 +536,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
             gc.collect()
             pm.Normal("obs", mu=flux_model, sd=sigma, observed=flux)
             gc.collect()
-            if starry.__version__ == "1.0.0": pmx.optimize(vars=[*sspots.values(),*scalealpha],options={"maxiter": 10000},start=model.test_point)
+            if starry.__version__ == "1.0.0": map_soln = pmx.optimize(vars=[*sspots.values(),*scalealpha],options={"maxiter": 10000},start=model.test_point)
             else: map_soln = pmx.optimize(vars=[*sspots.values(),*scalealpha],maxeval=10000,start=model.test_point)
             gc.collect()
             if str(map_soln['flux_model'][0]) != "nan":
@@ -579,7 +581,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         if liveplot:
             if 'figur' not in globals(): figur = plt.figure(111,figsize=(10, 6))
             plt.clf()
-            plt.plot(t+data['mintim'],flux, "k.", alpha=0.3, ms=2, label="Data")
+            plt.plot(t+data['mintim'],flux, "k.", ms=2, label="Data")
             plt.pause(0.00000001)
             plt.plot(t+data['mintim'],fmchi,'C1.',label="Light curve model",ms=2)
             plt.pause(0.00000001)
@@ -880,13 +882,13 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         ax1 = plt.subplot(gs[1],sharex=ax0)
         plt.subplots_adjust(hspace=0,top=0.933,bottom=0.082)
         if fulltime:
-            ax0.plot(data['ort']+data['mintim'], data['orf'], "k.", alpha=0.3, ms=2, label="Data")
+            ax0.plot(data['ort']+data['mintim'], data['orf'], "k.", ms=2, label="Data")
             lll = "Model for selected interval"
-            ax1.plot(data['ort']+data['mintim'], data['orf']-flux_model4,'k.', alpha=0.3, ms=2)
+            ax1.plot(data['ort']+data['mintim'], data['orf']-flux_model4,'k.', ms=2)
             ax1.plot([data['ort'][0]+data['mintim'],data['ort'][-1]+data['mintim']],[0,0],'C4--')
         else:
-            ax0.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", alpha=0.3, ms=2, label="Data")
-            ax1.plot(data['timeorig'], (data['fluxorig']/1000+1)-flux_model_orig, "k.", alpha=0.3, ms=2)
+            ax0.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", ms=2, label="Data")
+            ax1.plot(data['timeorig'], (data['fluxorig']/1000+1)-flux_model_orig, "k.", ms=2)
             ax1.plot([data['timeorig'][0],data['timeorig'][-1]],[0,0],'C2--')
             lll = "Model"
         if isgap(t,gv) or (isgap(data['ort'],gv) and fulltime): ax0.plot(t2+data['mintim'], pmx.eval_in_model(flux_model2,map_soln, model=model),marker='.',color="limegreen",label="Missing",ms=1,linestyle='')
@@ -938,10 +940,10 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         for i in range(len(components.keys())): 
             ax1.plot(tc+data['mintim'],components["Spot {}".format(i+1)]-maxcom[i],"C{}".format(cnums[i%len(cnums)]),marker='.',linestyle='',label="Spot {}".format(i+1),ms=1)
         if fulltime:
-            ax0.plot(data['ort']+data['mintim'], data['orf'], "k.", alpha=0.3, ms=2, label="Data")
+            ax0.plot(data['ort']+data['mintim'], data['orf'], "k.", ms=2, label="Data")
             lll = "Model for selected interval"
         else:
-            ax0.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", alpha=0.3, ms=2, label="Data")
+            ax0.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", ms=2, label="Data")
             lll = "Model"
         if isgap(t,gv) or (isgap(data['ort'],gv) and fulltime): ax0.plot(t2+data['mintim'], pmx.eval_in_model(flux_model2,map_soln, model=model),marker='.',color="limegreen",label="Missing",ms=1,linestyle='')
         if fulltime: ax0.plot(data['ort']+data['mintim'],flux_model4,'C9.',label="Light curve model",ms=1)
@@ -984,12 +986,12 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         gc.collect()
         plt.figure(1,figsize=(13, 8))
         if fulltime:
-            plt.plot(data['ort']+data['mintim'], data['orf'], "k.", alpha=0.3, ms=2, label="Data")
+            plt.plot(data['ort']+data['mintim'], data['orf'], "k.", ms=2, label="Data")
             plt.plot(data['ort']+data['mintim'],flux_model4,marker=".",color='C3',label="Light curve model",ms=msc,linestyle='')
             tcon = data['ort']+data['mintim']
             if np.max(data['orf']) > 1.02*mf: plt.ylim(top=1.02*mf)
         else:
-            plt.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", alpha=0.3, ms=2, label="Data")
+            plt.plot(data['timeorig'], data['fluxorig']/1000+1, "k.", ms=2, label="Data")
             plt.plot(data['timeorig'], flux_model_orig, marker=".",color='C3', label="Light curve model",ms=msc,linestyle='')
             tcon = data['timeorig']
             if np.max(data['fluxorig']/1000+1) > 1.02*mf: plt.ylim(top=1.02*mf)
@@ -1128,7 +1130,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
                 if displayctrl: plt.show()
 
             plt.figure(1,figsize=(12, 5))
-            plt.plot(t+data['mintim'], flux, "k.", alpha=0.3, ms=2, label="data")
+            plt.plot(t+data['mintim'], flux, "k.", ms=2, label="data")
             label = "Samples"
             for i in np.random.choice(range(len(trace["flux_model"])), 24):
                 plt.plot(t+data['mintim'], trace["flux_model"][i], "C0-", alpha=0.3, label=label)
@@ -1290,7 +1292,7 @@ if __name__ == "__main__":
         elif arg == '--pcom': pcom = True
         elif arg == '--liveplot': liveplot = True
         elif (("-h" in arg and len(arg) == 2) or arg == "--help"): helpf()
-    
+
     if "--modelonly" in argv: modelonly = True
     if len(argv) == 1 and not exists(params): helpf()
     if not exists(params):
