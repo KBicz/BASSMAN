@@ -180,15 +180,15 @@ def save_gif(name,image,time,speed,tic,timedata,fluxdata,fluxmodel,starttbjd,min
     if not sphere and not aitoff: plt.close()
     return 0
 
-def print_results(map_soln,nspots,omega_eq,tns):
+def print_results(map_soln,nspots,omega_eq,tns,ampl):
     tabtab = [" "]
     for i in range(1,nspots+1): tabtab.append("Spot{:d}".format(i))
-    data = np.asarray(np.zeros([nspots+1,9]),dtype=str)
+    data = np.asarray(np.zeros([nspots+1,11]),dtype=str)
     data[0,0], data[0,1] = '-','-'
     data[0,2], data[0,3] = '[deg]','[deg]'
     data[0,4], data[0,5] = '[day]','[K]'
     data[0,6], data[0,7] = '[%]','[R*]'
-    data[0,8] = '[W]'
+    data[0,8], data[0,9], data[0,10] = '[deg]','[W]', ' [%]'
     for i in range(1,nspots+1):
         data[i,0] = "{:.5f}".format(map_soln['amp{:d}'.format(i)])
         data[i,1] = "{:.4f}".format(map_soln['sigma{:d}'.format(i)])
@@ -199,10 +199,12 @@ def print_results(map_soln,nspots,omega_eq,tns):
         except: data[i,5] = "NaN"
         data[i,6] = str(round(tns['psize{:d}'.format(i)],5))
         data[i,7] = "{:.4f}".format(tns['rad{:d}'.format(i)])
-        try: data[i,8] = "{:.2e}".format(tns['flux{:d}'.format(i)])
-        except: data[i,8] = "NaN"
-    print(DataFrame(data,tabtab,["Amplitude","Sigma","Latitude","Longitude","Alpha={:.4f}".format(map_soln['alpha']),"Temperature","Size","Radius","Flux"]))
-
+        data[i,8] = "{:.4f}".format(2*np.sqrt(41252.96125*map_soln['sigma{:d}'.format(i)]/(4*np.pi)))
+        try: data[i,9] = "{:.2e}".format(tns['flux{:d}'.format(i)])
+        except: data[i,9] = "NaN"
+        data[i,10] =  " {:.5f}".format(np.abs(map_soln['amp{:d}'.format(i)])*map_soln['scale']*100/ampl)
+    print(DataFrame(data,tabtab,["Amplitude","Sigma","Latitude","Longitude",u"\u03B1"+"={:.4f}".format(map_soln['alpha']),"Temperature","Size","Radius",'Diameter',"Flux"," Contrast"]))
+    
 def init():
     starry.config.lazy = True
     starry.config.quiet = True
@@ -643,7 +645,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         elif map_soln["sigma{:d}".format(i)] <= 0.001: print("\a% Warning! Size of spot no. {:d} is very small! Model may not be correct!".format(i))
     
     tns=tempandsiz(map_soln,B,ampl,nspots)
-    print_results(map_soln,nspots,omega_eq,tns)
+    print_results(map_soln,nspots,omega_eq,tns,ampl)
     print()
     gc.collect()
 
@@ -728,6 +730,10 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
     elif isgap(data['ort'],gv) and fulltime:
         t2 = np.arange(data['ort'][0],data['ort'][-1],abs(t[1]-t[0]))
     flux_model4 = [None for _ in range(nspots)]
+
+    if fulltime: tc = data['ort']
+    else: tc = ttt
+
     for i in range(1,nspots+1):
         sec[i-1] = starry.Map(ydeg=B["ydeg"][0], udeg=B["udeg"][0], inc=B['inc'], amp=ampl)
         sec[i-1].add_spot(amp=map_soln['amp{:d}'.format(i)],sigma=map_soln['sigma{:d}'.format(i)],lat=map_soln['lat{:d}'.format(i)],lon=map_soln['lon{:d}'.format(i)])
@@ -779,8 +785,6 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
 
     gc.collect()
     components, maxcom = {}, []
-    if fulltime: tc = data['ort']
-    else: tc = ttt
     with model:
         for i in range(1,nspots+1):
             components["Spot {:d}".format(i)] = pmx.eval_in_model(sec[i-1].flux(theta=omega[i-1]*tc),map_soln, model=model)*map_soln['scale']
@@ -807,7 +811,7 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         default_sysout = sys.stdout
         sys.stdout = open(sfil,'w')
         print("# {}".format(command))
-        print_results(map_soln,nspots,omega_eq,tns)
+        print_results(map_soln,nspots,omega_eq,tns,ampl)
         print("# Flux_sum = {:.3e} W".format(fs))
         print("# Estimated mean temperature of spots = {:.0f} K".format((fs/(aspots*0.01*Stefan_Boltzmann))**0.25))
         print("# Estimated spotedness of star = {:.2f} %".format(aspots))
