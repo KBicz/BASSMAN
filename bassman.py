@@ -455,7 +455,8 @@ def recreate_sspots(params,nspots,prec,dprec,prs,omb,obm,def_inclination,gv,ylm,
         if m == 1000000*precd: print("# Error! Infinite model!")
         else:
             if ((len(ms) >= adap and abs(m-prec) >= dprec and round(min(ms)/prec) <= mprod and not noadap) and ((prec == precd) or (prec != precd and min(ms)+dprec < prec))) and not logpvctrl and not chivctrl:
-                prec = min(ms)+dprec
+                if min(ms)+dprec > prec: prec = min(ms)+dprec
+                else: prec += dprec
                 ms = list(np.array(ms)[np.where(np.array(ms) > min(ms))])
                 print("\a% Starting adaptative mode. New precision = {}.".format(prec))
             elif iterat > 1:
