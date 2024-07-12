@@ -22,4 +22,5 @@ pip3.10 install Theano-PyMC==1.1.2
 pip3.10 install xarray==2022.12.0
 pip3.10 install xarray-einstats==0.6.0
 pip3.10 install xyzservices==2023.10.1
+pip3.10 install lightkurve==2.4.2
 pip3.10 install numpy==1.21.2
