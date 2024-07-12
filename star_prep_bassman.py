@@ -114,9 +114,9 @@ def select_area(current_ax,green = False):
 
 def prepare(tic,file,lc,sigma,ydeg,udeg,amp,dinc,full,display,force,noerr,nctrl,npts,sigmarmf,rmfctrl,niter,rmpartsctrl,p0,p0ctrl,modelfile,modelctrl,editfile,editctrl):
     try:
-        stars = np.genfromtxt("/usr/local/bin/TESS_stars_params.dat",dtype='U13,U6,U10,U10,U10,U10,U10',names=['tic','vsini','rad','pls','prot','temp','logg'])
+        stars = np.genfromtxt("/home/kbicz/Astronomia/Programs/Python/bassman/TESS_stars_params.dat",dtype='U13,U6,U10,U10,U10,U10,U10',names=['tic','vsini','rad','pls','prot','temp','logg'])
     except:
-        print("\a\n# Error! There is no Tess_stars_params.dat file in /usr/local/bin/ folder!")
+        print("\a\n# Error! There is no Tess_stars_params.dat file in /home/kbicz/Astronomia/Programs/Python/bassman/ folder!")
         exit()
     try:
         wh = np.where(stars['tic'] == tic)
@@ -310,9 +310,9 @@ def prepare(tic,file,lc,sigma,ydeg,udeg,amp,dinc,full,display,force,noerr,nctrl,
     try:
         if str(temp) != "nan" and str(logg) != 'nan':
             try:
-                tempers = np.genfromtxt("/usr/local/bin/claretld.dat",dtype='float,float,float,float',names=['logg','temp','u1','u2'])
+                tempers = np.genfromtxt("/home/kbicz/Astronomia/Programs/Python/bassman/claretld.dat",dtype='float,float,float,float',names=['logg','temp','u1','u2'])
             except:
-                print("\a\n# Error! There is no claretld.dat file in /usr/local/bin/ folder!")
+                print("\a\n# Error! There is no claretld.dat file in /home/kbicz/Astronomia/Programs/Python/bassman/ folder!")
                 exit()
             tempcl = int(round(temp / 100.0)) * 100
             loggcl = round(logg * 2) / 2
