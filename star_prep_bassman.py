@@ -114,7 +114,7 @@ def select_area(current_ax,green = False):
 
 def prepare(tic,file,lc,sigma,ydeg,udeg,amp,dinc,full,display,force,noerr,nctrl,npts,sigmarmf,rmfctrl,niter,rmpartsctrl,p0,p0ctrl,modelfile,modelctrl,editfile,editctrl):
     try:
-        stars = np.genfromtxt("/home/kbicz/Astronomia/Programs/Python/bassman/TESS_stars_params.dat",dtype='U13,U6,U10,U10,U10,U10,U10',names=['tic','vsini','rad','pls','prot','temp','logg'])
+        stars = np.genfromtxt("/usr/local/bin/TESS_stars_params.dat",dtype='U13,U6,U10,U10,U10,U10,U10',names=['tic','vsini','rad','pls','prot','temp','logg'])
     except:
         print("\a\n# Error! There is no Tess_stars_params.dat file in /home/kbicz/Astronomia/Programs/Python/bassman/ folder!")
         exit()
